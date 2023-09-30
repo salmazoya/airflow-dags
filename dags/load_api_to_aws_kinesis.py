@@ -68,6 +68,7 @@ def list_connections():
         session = settings.Session() # get the session
         session.add(conn)
         session.commit() # it will insert the connection object programmatically.
+        session.close()
         logger.info('Creating new_connection done')
     except Exception as e:
         logger.info(f'Other ERROR:: {airflow_error}')
