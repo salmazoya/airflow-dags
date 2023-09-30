@@ -6,6 +6,7 @@ from airflow.models import Variable
 from airflow.models import Connection
 from airflow import settings
 from airflow.hooks.base import BaseHook
+from airflow.exceptions import AirflowNotFoundException
 
 
 ## External package
@@ -56,8 +57,9 @@ def list_connections():
     conn =  None
     try:
         conn = BaseHook.get_connection("api_post_conn_id")
-        return conn
-    except AirflowNotFoundException:
+    except AirflowNotFoundException as airflow_error:
+        logger.info(f'AIRFLOW ERROR:: {airflow_error}')
+        logger.info('Creating new_connection")
         conn = Connection(
             conn_id='api_post_conn_id',
             conn_type='http',
@@ -67,6 +69,8 @@ def list_connections():
         session = settings.Session() # get the session
         session.add(conn)
         session.commit() # it will insert the connection object programmatically.
+    except Exception as e:
+        logger.info(f'Other ERROR:: {airflow_error}')
     finally:
         return conn
     
