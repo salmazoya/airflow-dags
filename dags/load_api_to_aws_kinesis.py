@@ -1,12 +1,6 @@
 from airflow import DAG
-from airflow.providers.http.sensors.http import HttpSensor
-from airflow.providers.http.operators.http import SimpleHttpOperator
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
-from airflow.models import Connection
-from airflow import settings
-from airflow.hooks.base import BaseHook
-from airflow.exceptions import AirflowNotFoundException
 import requests
 
 ## External package
@@ -14,42 +8,42 @@ import json
 from datetime import datetime
 import boto3
 import logging
-import base64
 
 logger = logging.getLogger(__name__)
 
-# kinesis_client = boto3.client('kinesis')   
-
-mwaa_env_name = 'airflow-test-v1'
-client = boto3.client('mwaa')
-mwaa_cli_token = client.create_cli_token(Name=mwaa_env_name)
-mwaa_auth_token = 'Bearer ' + mwaa_cli_token['CliToken']
+api_base_url = 'https://jsonplaceholder.typicode.com'
+kinesis_client = boto3.client('kinesis')   
 
 ## Setting up incremental user id for next call
 def _set_api_user_id(api_user_id):
-    logger.info(f'type:: {type(api_user_id)} and api_user_id:: {api_user_id}')
-    if api_user_id == -1 or api_user_id == 10:
-        Variable.set(key="api_user_id", value=1)  
-    else:
-        Variable.set(key="api_user_id", value=int(api_user_id)+1) 
-    return f"Latest api user id {int(Variable.get(key='api_user_id'))} sucessfully"
+    try:
+        logger.info(f'type:: {type(api_user_id)} and api_user_id:: {api_user_id}')
+        if api_user_id == -1 or api_user_id == 10:
+            Variable.set(key="api_user_id", value=1)  
+        else:
+            Variable.set(key="api_user_id", value=int(api_user_id)+1) 
+        return f"Latest api user id {int(Variable.get(key='api_user_id'))} sucessfully"
+     except Exception as e:
+        logger.info('ERROR WHILE SETTING UP userId param value:: {e}')
+        raise Exception('ERROR WHILE SETTING UP userId param value:: {e}')
 
+def _extract_user_posts(new_api_user_id):
+    try:
+        logger.info(f'type:: {type(new_api_user_id)} and new_api_user_id:: {new_api_user_id}')
+        user_posts = []
+        user_posts = requests.get(f'{api_base_url}/posts?userId={int(new_api_user_id)}')
+        user_posts = user_posts.json()
+        logger.info(f'api data||user_posts:: {user_posts}')
+        return user_posts
+    except Exception as e:
+        logger.info('ERROR WHILE FETCHING USER POSTS API DATA:: {e}')
+        raise Exception('ERROR WHILE FETCHING USER POSTS API DATA:: {e}')
 
 def _process_user_posts(ti):
-    new_api_user_id = Variable.get("api_user_id")
-    stream_name = "user-posts-data-stream"
-    
-    logger.info(f'type:: {type(new_api_user_id)} and new_api_user_id:: {new_api_user_id}')
-    user_posts = []
-    ## POSTS END POINT RESPONSE
-    # with open('/opt/airflow/data/user_posts.json') as json_object:
-    #     user_posts = json.load(json_object) 
-    user_posts = requests.get(f'https://jsonplaceholder.typicode.com/posts?userId={int(new_api_user_id)}')
-    logger.info(f'api data||type:: {type(user_posts)} and user_posts:: {user_posts}')
-    # user_posts = ti.xcom_pull(task_ids='extract_user_posts')
-    user_posts = user_posts.json()
-    logger.info(f'api data||user_posts:: {user_posts}')
-    
+    stream_name = "user-posts-data-stream"    
+    user_posts = ti.xcom_pull(task_ids='extract_user_posts')
+    logger.info(f'api data|||user_posts:: {user_posts}')
+
     # Writing data one by one to kinesis data stream
     for user_post in user_posts:
         response = kinesis_client.put_record(
@@ -62,64 +56,25 @@ def _process_user_posts(ti):
    
     return f'Total {len(user_posts)} posts with user id {new_api_user_id} has been written into kinesis stream `{stream_name}` '
 
-def list_connections():
-    try:
-        conn = BaseHook.get_connection("api_post_conn_id")
-    except AirflowNotFoundException as airflow_error:
-        logger.info(f'AIRFLOW ERROR:: {airflow_error}')
-        logger.info('Creating new_connection')
-        conn = Connection(
-            conn_id='api_post_conn_id',
-            conn_type='http',
-            host='https://jsonplaceholder.typicode.com/posts'
-        ) 
-        #create a connection object
-        session = settings.Session() # get the session
-        session.add(conn)
-        session.commit() # it will insert the connection object programmatically.
-        session.close()
-        logger.info('Creating new_connection done')
-    except Exception as e:
-        logger.info(f'Other ERROR:: {airflow_error}')
+
     
 with DAG(dag_id='load_api_aws_kinesis', default_args={'owner': 'Sovan'}, tags=["api data load to s3"], start_date=datetime(2023,9,24), schedule='@daily', catchup=False):
 
-    create_if_connection_not_exists = PythonOperator(
-        task_id='create_if_connection_not_exists',
-        python_callable=list_connections
-    )
     get_api_user_id = PythonOperator(
         task_id = 'get_api_user_id',
         python_callable = _set_api_user_id,
         op_args=[int(Variable.get("api_user_id", default_var=-1))]
     ) 
-
-    # is_api_available = HttpSensor(
-    #     task_id = 'is_api_available',
-    #     http_conn_id = 'api_post_conn_id',
-    #     headers={
-    #       'Authorization': mwaa_auth_token,
-    #       'Content-Type': 'application/json'
-    #       },
-    #     endpoint = f"/posts?userId={int(Variable.get(key='api_user_id', default_var=-1))}"
-    # )
-
-    # extract_user_posts = SimpleHttpOperator(
-    #     task_id = 'extract_user_posts',
-    #     http_conn_id = 'api_post_conn_id',
-    #     headers={
-    #       'Authorization': mwaa_auth_token,
-    #       'Content-Type': 'application/json'
-    #     },
-    #     endpoint = f"/posts?userId={int(Variable.get(key='api_user_id', default_var=-1))}",
-    #     method = 'GET',
-    #     response_filter = lambda response: json.loads(response.text),
-    #     log_response = True
-    # )
+    
+    extract_user_posts = PythonOperator(
+        task_id = 'extract_user_posts',
+        python_callable = _extract_user_posts,
+        op_args=[int(Variable.get("api_user_id", default_var=-1))]
+    )
 
     write_userposts_to_stream = PythonOperator(
        task_id = 'write_userposts_to_stream',
        python_callable = _process_user_posts
     )
-    # is_api_available >> extract_user_posts >>
-    create_if_connection_not_exists >> get_api_user_id >>  write_userposts_to_stream
+
+    get_api_user_id >> extract_user_posts >>  write_userposts_to_stream
