@@ -7,7 +7,7 @@ from airflow.models import Connection
 from airflow import settings
 from airflow.hooks.base import BaseHook
 from airflow.exceptions import AirflowNotFoundException
-
+import requests
 
 ## External package
 import json
@@ -43,8 +43,9 @@ def _process_user_posts(ti):
     user_posts = []
     ## POSTS END POINT RESPONSE
     # with open('/opt/airflow/data/user_posts.json') as json_object:
-    #     user_posts = json.load(json_object)   
-    user_posts = ti.xcom_pull(task_ids='extract_user_posts')
+    #     user_posts = json.load(json_object) 
+    user_posts = requests.get(f'https://jsonplaceholder.typicode.com/posts?userId={int(new_api_user_id)}')
+    # user_posts = ti.xcom_pull(task_ids='extract_user_posts')
     user_posts = base64.b64decode(user_posts.json()).decode('utf8')
     logger.info(f'api data||user_posts:: {user_posts}')
     
@@ -52,7 +53,7 @@ def _process_user_posts(ti):
     for user_post in user_posts:
         response = kinesis_client.put_record(
             StreamName = stream_name,
-            Data=json.dumps(user_post)+'\n',
+            Data=json.dumps(user_post)+'\n', 
             PartitionKey=str(user_post['userId']),
             SequenceNumberForOrdering=str(user_post['id']-1)
         )
@@ -92,32 +93,32 @@ with DAG(dag_id='load_api_aws_kinesis', default_args={'owner': 'Sovan'}, tags=["
         op_args=[int(Variable.get("api_user_id", default_var=-1))]
     ) 
 
-    is_api_available = HttpSensor(
-        task_id = 'is_api_available',
-        http_conn_id = 'api_post_conn_id',
-        headers={
-          'Authorization': mwaa_auth_token,
-          'Content-Type': 'application/json'
-          },
-        endpoint = f"/posts?userId={int(Variable.get(key='api_user_id', default_var=-1))}"
-    )
+    # is_api_available = HttpSensor(
+    #     task_id = 'is_api_available',
+    #     http_conn_id = 'api_post_conn_id',
+    #     headers={
+    #       'Authorization': mwaa_auth_token,
+    #       'Content-Type': 'application/json'
+    #       },
+    #     endpoint = f"/posts?userId={int(Variable.get(key='api_user_id', default_var=-1))}"
+    # )
 
-    extract_user_posts = SimpleHttpOperator(
-        task_id = 'extract_user_posts',
-        http_conn_id = 'api_post_conn_id',
-        headers={
-          'Authorization': mwaa_auth_token,
-          'Content-Type': 'application/json'
-        },
-        endpoint = f"/posts?userId={int(Variable.get(key='api_user_id', default_var=-1))}",
-        method = 'GET',
-        response_filter = lambda response: json.loads(response.text),
-        log_response = True
-    )
+    # extract_user_posts = SimpleHttpOperator(
+    #     task_id = 'extract_user_posts',
+    #     http_conn_id = 'api_post_conn_id',
+    #     headers={
+    #       'Authorization': mwaa_auth_token,
+    #       'Content-Type': 'application/json'
+    #     },
+    #     endpoint = f"/posts?userId={int(Variable.get(key='api_user_id', default_var=-1))}",
+    #     method = 'GET',
+    #     response_filter = lambda response: json.loads(response.text),
+    #     log_response = True
+    # )
 
     write_userposts_to_stream = PythonOperator(
        task_id = 'write_userposts_to_stream',
        python_callable = _process_user_posts
     )
-
-    create_if_connection_not_exists >> get_api_user_id >> is_api_available >> extract_user_posts >> write_userposts_to_stream
+    # is_api_available >> extract_user_posts >>
+    create_if_connection_not_exists >> get_api_user_id >>  write_userposts_to_stream
