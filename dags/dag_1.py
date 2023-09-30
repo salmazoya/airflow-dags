@@ -12,7 +12,7 @@ s3_client = boto3.client('s3')
 
 logger = logging.getLogger(__name__)
 
-with DAG(dag_id='demo', start_date=datetime(2023,9,29), schedule='0 0 * * *', catchup=False) as dag:
+with DAG(dag_id='load_sample_json_to_s3', start_date=datetime(2023,9,29), schedule='0 0 * * *', catchup=False) as dag:
 
     hello = BashOperator(task_id='hello', bash_command='echo hello')
 
