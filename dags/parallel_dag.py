@@ -1,6 +1,5 @@
 from airflow.decorators import dag, task
 from airflow.operators.bash import BashOperator
-#heloo
 from datetime import datetime
 
 @dag(start_date=datetime(2023, 1 , 1), schedule='@daily', catchup=False)
