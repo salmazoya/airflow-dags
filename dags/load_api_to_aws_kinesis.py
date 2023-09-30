@@ -45,6 +45,7 @@ def _process_user_posts(ti):
     # with open('/opt/airflow/data/user_posts.json') as json_object:
     #     user_posts = json.load(json_object) 
     user_posts = requests.get(f'https://jsonplaceholder.typicode.com/posts?userId={int(new_api_user_id)}')
+    logger.info(f'api data||type:: {type(user_posts)} and user_posts:: {user_posts}')
     # user_posts = ti.xcom_pull(task_ids='extract_user_posts')
     user_posts = base64.b64decode(user_posts.json()).decode('utf8')
     logger.info(f'api data||user_posts:: {user_posts}')
