@@ -14,7 +14,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-kinesis_client = boto3.client('kinesis')   
+# kinesis_client = boto3.client('kinesis')   
 
 ## Setting up incremental user id for next call
 def _set_api_user_id(api_user_id):
