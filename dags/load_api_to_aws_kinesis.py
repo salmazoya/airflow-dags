@@ -22,9 +22,7 @@ logger = logging.getLogger(__name__)
 
 mwaa_env_name = 'test'
 client = boto3.client('mwaa')
-mwaa_cli_token = client.create_cli_token(
-  Name=mwaa_env_name
-)
+mwaa_cli_token = client.create_cli_token()
 mwaa_auth_token = 'Bearer ' + mwaa_cli_token['CliToken']
 
 ## Setting up incremental user id for next call
