@@ -34,7 +34,7 @@ def _extract_user_posts(new_api_user_id, **context):
         user_posts = requests.get(f'{api_base_url}/posts?userId={int(new_api_user_id)}')
         user_posts = user_posts.json()
         logger.info(f'api data||user_posts:: {user_posts}')
-        context['task_instance'].xcom_push('user_posts',value,user_posts)
+        context['task_instance'].xcom_push('user_posts',user_posts)
         return user_posts
     except Exception as e:
         logger.info(f'ERROR WHILE FETCHING USER POSTS API DATA:: {e}')
