@@ -54,7 +54,6 @@ def _process_user_posts(ti):
     return f'Total {len(user_posts)} posts with user id {new_api_user_id} has been written into kinesis stream `{stream_name}` '
 
 def list_connections():
-    conn =  None
     try:
         conn = BaseHook.get_connection("api_post_conn_id")
     except AirflowNotFoundException as airflow_error:
@@ -72,8 +71,6 @@ def list_connections():
         logger.info('Creating new_connection done')
     except Exception as e:
         logger.info(f'Other ERROR:: {airflow_error}')
-    finally:
-        return conn
     
 with DAG(dag_id='load_api_aws_kinesis', default_args={'owner': 'Sovan'}, tags=["api data load to s3"], start_date=datetime(2023,9,24), schedule='@daily', catchup=False):
 
@@ -102,9 +99,9 @@ with DAG(dag_id='load_api_aws_kinesis', default_args={'owner': 'Sovan'}, tags=["
         log_response = True
     )
 
-    # process_user_posts = PythonOperator(
-    #    task_id = 'process_user_posts',
-    #    python_callable = _process_user_posts
-    # )
+    write_userposts_to_stream = PythonOperator(
+       task_id = 'write_userposts_to_stream',
+       python_callable = _process_user_posts
+    )
 
-    create_if_connection_not_exists >> get_api_user_id >> is_api_available >> extract_user_posts 
+    create_if_connection_not_exists >> get_api_user_id >> is_api_available >> extract_user_posts >> write_userposts_to_stream
