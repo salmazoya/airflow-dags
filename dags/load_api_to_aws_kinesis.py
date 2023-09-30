@@ -4,7 +4,6 @@ from airflow.providers.http.operators.http import SimpleHttpOperator
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
 
-
 ## External package
 import json
 from datetime import datetime
