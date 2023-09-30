@@ -43,7 +43,7 @@ def _extract_user_posts(new_api_user_id=1, **context):
 def _process_user_posts(ti):
     try:
         stream_name = "user-posts-data-stream"    
-        user_posts = ti.xcom_pull(task_ids='extract_user_posts', key='user_posts')
+        user_posts = ti.xcom_pull(task_ids='extract_userposts', key='user_posts')
         logger.info(f'api data|||user_posts:: {user_posts}')
 
         # Writing data one by one to kinesis data stream
