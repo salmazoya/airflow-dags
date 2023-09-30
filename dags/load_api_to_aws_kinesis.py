@@ -14,10 +14,18 @@ import json
 from datetime import datetime
 import boto3
 import logging
+import base64
 
 logger = logging.getLogger(__name__)
 
 # kinesis_client = boto3.client('kinesis')   
+
+mwaa_env_name = 'test'
+client = boto3.client('mwaa')
+mwaa_cli_token = client.create_cli_token(
+  Name=mwaa_env_name
+)
+mwaa_auth_token = 'Bearer ' + mwaa_cli_token['CliToken']
 
 ## Setting up incremental user id for next call
 def _set_api_user_id(api_user_id):
@@ -39,6 +47,7 @@ def _process_user_posts(ti):
     # with open('/opt/airflow/data/user_posts.json') as json_object:
     #     user_posts = json.load(json_object)   
     user_posts = ti.xcom_pull(task_ids='extract_user_posts')
+    user_posts = base64.b64decode(user_posts.json()).decode('utf8')
     logger.info(f'api data||user_posts:: {user_posts}')
     
     # Writing data one by one to kinesis data stream
@@ -88,12 +97,20 @@ with DAG(dag_id='load_api_aws_kinesis', default_args={'owner': 'Sovan'}, tags=["
     is_api_available = HttpSensor(
         task_id = 'is_api_available',
         http_conn_id = 'api_post_conn_id',
+        headers={
+          'Authorization': mwaa_auth_token,
+          'Content-Type': 'application/json'
+          },
         endpoint = f"/posts?userId={int(Variable.get(key='api_user_id', default_var=-1))}"
     )
 
     extract_user_posts = SimpleHttpOperator(
         task_id = 'extract_user_posts',
         http_conn_id = 'api_post_conn_id',
+        headers={
+          'Authorization': mwaa_auth_token,
+          'Content-Type': 'application/json'
+        },
         endpoint = f"/posts?userId={int(Variable.get(key='api_user_id', default_var=-1))}",
         method = 'GET',
         response_filter = lambda response: json.loads(response.text),
