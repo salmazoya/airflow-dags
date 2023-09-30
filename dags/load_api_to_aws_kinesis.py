@@ -27,13 +27,14 @@ def _set_api_user_id(api_user_id):
         logger.info(f'ERROR WHILE SETTING UP userId param value:: {e}')
         raise Exception(f'ERROR WHILE SETTING UP userId param value:: {e}')
 
-def _extract_user_posts(new_api_user_id):
+def _extract_user_posts(new_api_user_id, **context):
     try:
         logger.info(f'type:: {type(new_api_user_id)} and new_api_user_id:: {new_api_user_id}')
         user_posts = []
         user_posts = requests.get(f'{api_base_url}/posts?userId={int(new_api_user_id)}')
         user_posts = user_posts.json()
         logger.info(f'api data||user_posts:: {user_posts}')
+        context['task_instance'].xcom_push('user_posts',value,user_posts)
         return user_posts
     except Exception as e:
         logger.info(f'ERROR WHILE FETCHING USER POSTS API DATA:: {e}')
@@ -42,7 +43,7 @@ def _extract_user_posts(new_api_user_id):
 def _process_user_posts(ti):
     try:
         stream_name = "user-posts-data-stream"    
-        user_posts = ti.xcom_pull(task_ids='extract_user_posts')
+        user_posts = ti.xcom_pull(task_ids='extract_user_posts', key='user_posts')
         logger.info(f'api data|||user_posts:: {user_posts}')
 
         # Writing data one by one to kinesis data stream
@@ -73,7 +74,8 @@ with DAG(dag_id='load_api_aws_kinesis', default_args={'owner': 'Sovan'}, tags=["
     extract_userposts = PythonOperator(
         task_id = 'extract_userposts',
         python_callable = _extract_user_posts,
-        op_args=[int(Variable.get("api_user_id", default_var=-1))]
+        op_kwargs={"new_api_user_id": int(Variable.get("api_user_id", default_var=-1))},
+        provide_context=True
     )
 
     write_userposts_to_stream = PythonOperator(
