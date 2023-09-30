@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 
 # kinesis_client = boto3.client('kinesis')   
 
-mwaa_env_name = 'test'
+mwaa_env_name = 'airflow-test-v1'
 client = boto3.client('mwaa')
-mwaa_cli_token = client.create_cli_token()
+mwaa_cli_token = client.create_cli_token(Name=mwaa_env_name)
 mwaa_auth_token = 'Bearer ' + mwaa_cli_token['CliToken']
 
 ## Setting up incremental user id for next call
