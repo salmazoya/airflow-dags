@@ -24,8 +24,8 @@ def _set_api_user_id(api_user_id):
             Variable.set(key="api_user_id", value=int(api_user_id)+1) 
         return f"Latest api user id {int(Variable.get(key='api_user_id'))} sucessfully"
     except Exception as e:
-        logger.info('ERROR WHILE SETTING UP userId param value:: {e}')
-        raise Exception('ERROR WHILE SETTING UP userId param value:: {e}')
+        logger.info(f'ERROR WHILE SETTING UP userId param value:: {e}')
+        raise Exception(f'ERROR WHILE SETTING UP userId param value:: {e}')
 
 def _extract_user_posts(new_api_user_id):
     try:
@@ -36,8 +36,8 @@ def _extract_user_posts(new_api_user_id):
         logger.info(f'api data||user_posts:: {user_posts}')
         return user_posts
     except Exception as e:
-        logger.info('ERROR WHILE FETCHING USER POSTS API DATA:: {e}')
-        raise Exception('ERROR WHILE FETCHING USER POSTS API DATA:: {e}')
+        logger.info(f'ERROR WHILE FETCHING USER POSTS API DATA:: {e}')
+        raise Exception(f'ERROR WHILE FETCHING USER POSTS API DATA:: {e}')
 
 def _process_user_posts(ti):
     try:
@@ -57,8 +57,8 @@ def _process_user_posts(ti):
     
         return f'Total {len(user_posts)} posts with user id {new_api_user_id} has been written into kinesis stream `{stream_name}` '
     except Exception as e:
-        logger.info('ERROR WHILE WRITING USER POSTS TO KINESIS STREAM:: {e}')
-        raise Exception('ERROR WHILE WRITING USER POSTS TO KINESIS STREAM:: {e}')
+        logger.info(f'ERROR WHILE WRITING USER POSTS TO KINESIS STREAM:: {e}')
+        raise Exception(f'ERROR WHILE WRITING USER POSTS TO KINESIS STREAM:: {e}')
 
 
     
