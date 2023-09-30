@@ -95,9 +95,9 @@ with DAG(dag_id='load_api_aws_kinesis', default_args={'owner': 'Sovan'}, tags=["
         log_response = True
     )
 
-    process_user_posts = PythonOperator(
-       task_id = 'process_user_posts',
-       python_callable = _process_user_posts
-   )
+    # process_user_posts = PythonOperator(
+    #    task_id = 'process_user_posts',
+    #    python_callable = _process_user_posts
+    # )
 
     check_if_connection_available >> get_api_user_id >> is_api_available >> extract_user_posts 
