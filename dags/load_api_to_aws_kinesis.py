@@ -15,7 +15,7 @@ api_base_url = 'https://jsonplaceholder.typicode.com'
 kinesis_client = boto3.client('kinesis')   
 
 ## Setting up incremental user id for next call
-def _set_api_user_id(api_user_id):
+def _set_api_user_id(api_user_id, **context):
     try:
         logger.info(f'type:: {type(api_user_id)} and api_user_id:: {api_user_id}')
         if api_user_id == -1 or api_user_id == 10:
@@ -27,7 +27,7 @@ def _set_api_user_id(api_user_id):
         logger.info(f'ERROR WHILE SETTING UP userId param value:: {e}')
         raise Exception(f'ERROR WHILE SETTING UP userId param value:: {e}')
 
-def _extract_user_posts(new_api_user_id=1, **context):
+def _extract_userposts(new_api_user_id=1, **context):
     try:
         logger.info(f'type:: {type(new_api_user_id)} and new_api_user_id:: {new_api_user_id}')
         user_posts = []
@@ -40,10 +40,10 @@ def _extract_user_posts(new_api_user_id=1, **context):
         logger.info(f'ERROR WHILE FETCHING USER POSTS API DATA:: {e}')
         raise Exception(f'ERROR WHILE FETCHING USER POSTS API DATA:: {e}')
 
-def _process_user_posts(ti):
+def _process_user_posts(**context):
     try:
         stream_name = "user-posts-data-stream"    
-        user_posts = ti.xcom_pull(task_ids='extract_userposts', key='user_posts')
+        user_posts = context['task_instance'].xcom_pull(task_ids='extract_userposts', key='user_posts')
         logger.info(f'api data|||user_posts:: {user_posts}')
 
         # Writing data one by one to kinesis data stream
@@ -68,19 +68,21 @@ with DAG(dag_id='load_api_aws_kinesis', default_args={'owner': 'Sovan'}, tags=["
     get_api_userId_params = PythonOperator(
         task_id = 'get_api_userId_params',
         python_callable = _set_api_user_id,
-        op_args=[int(Variable.get("api_user_id", default_var=-1))]
+        op_args=[int(Variable.get("api_user_id", default_var=-1))],
+        provide_context=True
     ) 
     
     extract_userposts = PythonOperator(
         task_id = 'extract_userposts',
-        python_callable = _extract_user_posts,
+        python_callable = _extract_userposts,
         op_kwargs={"new_api_user_id": int(Variable.get("api_user_id", default_var=-1))},
         provide_context=True
     )
 
     write_userposts_to_stream = PythonOperator(
        task_id = 'write_userposts_to_stream',
-       python_callable = _process_user_posts
+       python_callable = _process_user_posts,
+       provide_context=True
     )
 
     get_api_userId_params >> extract_userposts >>  write_userposts_to_stream
