@@ -3,6 +3,8 @@ from airflow.providers.http.sensors.http import HttpSensor
 from airflow.providers.http.operators.http import SimpleHttpOperator
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
+from airflow.models import Connection
+from airflow import settings
 
 ## External package
 import json
@@ -48,8 +50,29 @@ def _process_user_posts(ti):
    
     return f'Total {len(user_posts)} posts with user id {new_api_user_id} has been written into kinesis stream `{stream_name}` '
 
+def list_connections(**context):
+    session = settings.Session()
+    connection_list = session.query(Connection)
+    logging.info(f'connection_list:: {connection_list}')
+    # conn = Connection(
+    #     conn_id='api_post_conn_id',
+    #     conn_type='http',
+    #     host='https://jsonplaceholder.typicode.com/posts'
+    # ) 
+
+    #create a connection object
+    # session = settings.Session() # get the session
+    # session.add(conn)
+    # session.commit() # it will insert the connection object programmatically.
+    return connection_list
+    
 with DAG(dag_id='load_api_aws_kinesis', default_args={'owner': 'Sovan'}, tags=["api data load to s3"], start_date=datetime(2023,9,24), schedule='@daily', catchup=False):
 
+    check_if_connection_available = PythonOperator(
+        task_id='check_if_connection_available',
+        python_callable=list_connections,
+        provide_context=True,
+    )
    
     get_api_user_id = PythonOperator(
         task_id = 'get_api_user_id',
@@ -77,4 +100,4 @@ with DAG(dag_id='load_api_aws_kinesis', default_args={'owner': 'Sovan'}, tags=["
        python_callable = _process_user_posts
    )
 
-    get_api_user_id >> is_api_available >> extract_user_posts >> process_user_posts
+    check_if_connection_available >> get_api_user_id >> is_api_available >> extract_user_posts 
