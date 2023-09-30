@@ -27,7 +27,7 @@ def _set_api_user_id(api_user_id):
         logger.info(f'ERROR WHILE SETTING UP userId param value:: {e}')
         raise Exception(f'ERROR WHILE SETTING UP userId param value:: {e}')
 
-def _extract_user_posts(new_api_user_id, **context):
+def _extract_user_posts(new_api_user_id=1, **context):
     try:
         logger.info(f'type:: {type(new_api_user_id)} and new_api_user_id:: {new_api_user_id}')
         user_posts = []
