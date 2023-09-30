@@ -40,7 +40,7 @@ def _extract_userposts(new_api_user_id=1, **context):
         logger.info(f'ERROR WHILE FETCHING USER POSTS API DATA:: {e}')
         raise Exception(f'ERROR WHILE FETCHING USER POSTS API DATA:: {e}')
 
-def _process_user_posts(**context):
+def _process_user_posts(new_api_user_id=1, **context):
     try:
         stream_name = "user-posts-data-stream"    
         user_posts = context['task_instance'].xcom_pull(task_ids='extract_userposts', key='user_posts')
@@ -82,6 +82,7 @@ with DAG(dag_id='load_api_aws_kinesis', default_args={'owner': 'Sovan'}, tags=["
     write_userposts_to_stream = PythonOperator(
        task_id = 'write_userposts_to_stream',
        python_callable = _process_user_posts,
+       op_kwargs={"new_api_user_id": int(Variable.get("api_user_id", default_var=-1))},
        provide_context=True
     )
 
