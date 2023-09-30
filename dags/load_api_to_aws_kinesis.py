@@ -59,7 +59,7 @@ def list_connections():
         conn = BaseHook.get_connection("api_post_conn_id")
     except AirflowNotFoundException as airflow_error:
         logger.info(f'AIRFLOW ERROR:: {airflow_error}')
-        logger.info('Creating new_connection")
+        logger.info('Creating new_connection')
         conn = Connection(
             conn_id='api_post_conn_id',
             conn_type='http',
@@ -69,6 +69,7 @@ def list_connections():
         session = settings.Session() # get the session
         session.add(conn)
         session.commit() # it will insert the connection object programmatically.
+        logger.info('Creating new_connection done')
     except Exception as e:
         logger.info(f'Other ERROR:: {airflow_error}')
     finally:
