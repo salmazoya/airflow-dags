@@ -3,8 +3,7 @@ from airflow.providers.http.sensors.http import HttpSensor
 from airflow.providers.http.operators.http import SimpleHttpOperator
 from airflow.operators.python import PythonOperator
 from airflow.models import Variable
-## Following available to python package apache-airflow-providers-amazon
-from airflow.providers.amazon.aws.hooks.base_aws import AwsBaseHook
+
 
 ## External package
 import json
@@ -14,14 +13,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-aws_base_hook_conn = AwsBaseHook(aws_conn_id='aws_connection_id')
-aws_iam_creds = aws_base_hook_conn.get_credentials()
-
-kinesis_client = boto3.client('kinesis',
-	aws_access_key_id=aws_iam_creds.access_key, 
-    aws_secret_access_key=aws_iam_creds.secret_key, 
-    region_name=Variable.get(key='aws_region_name', default_var='us-east-1')
-)   
+kinesis_client = boto3.client('kinesis')   
 
 ## Setting up incremental user id for next call
 def _set_api_user_id(api_user_id):
