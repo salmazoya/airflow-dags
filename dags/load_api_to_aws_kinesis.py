@@ -19,9 +19,9 @@ def _set_api_user_id(api_user_id, **context):
     try:
         logger.info(f'type:: {type(api_user_id)} and api_user_id:: {api_user_id}')
         if api_user_id == -1 or api_user_id == 10:
-            Variable.set(key="api_user_id", value=1)  
+            Variable.set(key="api_user_id", value=str(1))
         else:
-            Variable.set(key="api_user_id", value=int(api_user_id)+1) 
+            Variable.set(key="api_user_id", value=str(int(api_user_id)+1))
         return f"Latest api user id {int(Variable.get(key='api_user_id'))} sucessfully"
     except Exception as e:
         logger.info(f'ERROR WHILE SETTING UP userId param value:: {e}')
@@ -87,4 +87,5 @@ with DAG(dag_id='load_api_aws_kinesis', default_args={'owner': 'Sovan'}, tags=["
     )
 
     get_api_userId_params >> extract_userposts >>  write_userposts_to_stream
+
 
